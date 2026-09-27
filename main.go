@@ -56,9 +56,20 @@ func userRoutes(r chi.Router) {
 	r.Get("/", allUsers)
 	r.Get("/search", getUserByName)
 	r.Get("/{id}", getUserByID)
-	r.Delete("/{id}", deleteUserByID)
+	r.With(adminOnly).Delete("/{id}", deleteUserByID)
 	r.Post("/", createUser)
 
+}
+
+func adminOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		role := r.Header.Get("X-Role")
+		if role != "admin" {
+			http.Error(w, "Unauthorized access", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func createUser(w http.ResponseWriter, r *http.Request) {
