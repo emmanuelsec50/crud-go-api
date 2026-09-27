@@ -38,7 +38,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-	r.Get("/", getUserByName)
+	r.Get("/", helloWorld)
 	r.Group(func(r chi.Router) {
 		r.Use(requireAPI)
 
@@ -54,10 +54,10 @@ func main() {
 
 func userRoutes(r chi.Router) {
 	r.Get("/", allUsers)
+	r.Get("/search", getUserByName)
 	r.Get("/{id}", getUserByID)
 	r.Delete("/{id}", deleteUserByID)
 	r.Post("/", createUser)
-	r.Get("/search", getUserByName)
 
 }
 
@@ -72,6 +72,10 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 	nextID++
 	w.WriteHeader(http.StatusCreated)
 
+}
+
+func helloWorld(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Hello world"))
 }
 
 func getUserByName(w http.ResponseWriter, r *http.Request) {
