@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -61,6 +62,15 @@ func userRoutes(r chi.Router) {
 
 }
 
+type ctxKey string
+
+const userRole ctxKey = "Role"
+
+type Authuser struct {
+	ID   int
+	Role string
+}
+
 func adminOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		role := r.Header.Get("X-Role")
@@ -68,7 +78,13 @@ func adminOnly(next http.Handler) http.Handler {
 			http.Error(w, "Unauthorized access", http.StatusForbidden)
 			return
 		}
-		next.ServeHTTP(w, r)
+		obj := Authuser{
+			ID:   1,
+			Role: role,
+		}
+		ctx := context.WithValue(r.Context(), userRole, obj)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -132,8 +148,16 @@ func getUserByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(body)
 }
+
 func deleteUserByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	role, ok := r.Context().Value(userRole).(Authuser)
+	if !ok {
+		fmt.Println("Role not found")
+		return
+	}
+	fmt.Printf("Authenticated user: %d\n", role.ID)
+	fmt.Printf("Role: %s\n", role.Role)
 
 	userID, err := strconv.Atoi(id)
 	if err != nil {
