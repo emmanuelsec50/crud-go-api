@@ -36,11 +36,24 @@ func requireAPI(next http.Handler) http.Handler {
 	})
 }
 
+func requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		method := r.Method
+		fmt.Printf("[REQUEST] %s %s", method, path)
+		next.ServeHTTP(w, r)
+		newPath := r.URL.Path
+		newMethod := r.Method
+		fmt.Printf("[REQUEST] %s %s", newMethod, newPath)
+	})
+}
+
 func main() {
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
 	r.Use(middleware.RequestID)
+	r.Use(middleware.Logger)
+	r.Use(requestLogger)
 	r.Get("/", helloWorld)
 	r.Group(func(r chi.Router) {
 		r.Use(requireAPI)
