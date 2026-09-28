@@ -17,6 +17,16 @@ type User struct {
 	Age  string `json:"age"`
 }
 
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) writeHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
 var (
 	userStore = map[int]User{
 		1: {Name: "Emmanuel", Age: "20"},
@@ -38,13 +48,20 @@ func requireAPI(next http.Handler) http.Handler {
 
 func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		rw := &responseWriter{
+			ResponseWriter: w,
+			statusCode:     http.StatusOK,
+		}
+
 		path := r.URL.Path
 		method := r.Method
 		fmt.Printf("[REQUEST] %s %s", method, path)
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(rw, r)
 		newPath := r.URL.Path
 		newMethod := r.Method
-		fmt.Printf("[REQUEST] %s %s", newMethod, newPath)
+		status := rw.statusCode
+		fmt.Printf("[RESPONSE] %s %s %d", newMethod, newPath, status)
 	})
 }
 
