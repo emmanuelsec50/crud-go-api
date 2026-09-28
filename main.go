@@ -40,6 +40,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+	r.Use(middleware.RequestID)
 	r.Get("/", helloWorld)
 	r.Group(func(r chi.Router) {
 		r.Use(requireAPI)
@@ -94,7 +95,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan bool)
 	go func() {
 		select {
-		case <-time.After(3 * time.Second):
+		case <-time.After(2 * time.Second):
 			ch <- true
 		case <-r.Context().Done():
 			return
@@ -108,7 +109,8 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Request timed out")
 		return
 	}
-
+	id := middleware.GetReqID(r.Context())
+	fmt.Printf("Request ID is: %s\n", id)
 	var user User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
