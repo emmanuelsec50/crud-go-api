@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -42,8 +43,9 @@ func main() {
 	r.Get("/", helloWorld)
 	r.Group(func(r chi.Router) {
 		r.Use(requireAPI)
-
+		r.Use(middleware.Timeout(5 * time.Second))
 		r.Route("/users", userRoutes)
+
 	})
 
 	fmt.Println("Server running in port 3000")
@@ -89,6 +91,24 @@ func adminOnly(next http.Handler) http.Handler {
 }
 
 func createUser(w http.ResponseWriter, r *http.Request) {
+	ch := make(chan bool)
+	go func() {
+		select {
+		case <-time.After(3 * time.Second):
+			ch <- true
+		case <-r.Context().Done():
+			return
+
+		}
+	}()
+	select {
+	case <-ch:
+		fmt.Println("Finished processing")
+	case <-r.Context().Done():
+		fmt.Println("Request timed out")
+		return
+	}
+
 	var user User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
