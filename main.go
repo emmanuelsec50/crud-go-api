@@ -57,7 +57,9 @@ func requestLogger(next http.Handler) http.Handler {
 		path := r.URL.Path
 		method := r.Method
 		fmt.Printf("[REQUEST] %s %s", method, path)
+		start := time.Now()
 		next.ServeHTTP(rw, r)
+		elasped := time.Since(start)
 		newPath := r.URL.Path
 		newMethod := r.Method
 		status := rw.statusCode
