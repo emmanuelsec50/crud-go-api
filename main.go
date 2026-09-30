@@ -17,6 +17,23 @@ type User struct {
 	Age  string `json:"age"`
 }
 
+type userService struct {
+	userStore map[int]User
+	nextID    int
+}
+
+func (u *userService) Create(user User) int {
+	id := u.nextID
+	u.userStore[u.nextID] = user
+	u.nextID++
+	return id
+}
+
+var store = userService{
+	userStore: map[int]User{1: {Name: "Emmanuel", Age: "65"}},
+	nextID:    2,
+}
+
 type responseWriter struct {
 	http.ResponseWriter
 	statusCode int
@@ -27,12 +44,14 @@ func (rw *responseWriter) writeHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-var (
-	userStore = map[int]User{
-		1: {Name: "Emmanuel", Age: "20"},
-	}
-	nextID = 2
-)
+// var (
+//
+//	userStore = map[int]User{
+//		1: {Name: "Emmanuel", Age: "20"},
+//	}
+//	nextID = 2
+//
+// )
 var secretKey = "secret-key-123"
 
 func requireAPI(next http.Handler) http.Handler {
@@ -63,7 +82,7 @@ func requestLogger(next http.Handler) http.Handler {
 		newPath := r.URL.Path
 		newMethod := r.Method
 		status := rw.statusCode
-		fmt.Printf("[RESPONSE] %s %s %d", newMethod, newPath, status)
+		fmt.Printf("[RESPONSE] %s %s %d %s", newMethod, newPath, status, elasped)
 	})
 }
 
@@ -149,8 +168,10 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error in decoding", http.StatusBadRequest)
 		return
 	}
-	userStore[nextID] = user
-	nextID++
+
+	newID := store.Create(user)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[int]User{newID: {store.userStore[newID].Name, store.userStore[newID].Age}})
 	w.WriteHeader(http.StatusCreated)
 
 }
