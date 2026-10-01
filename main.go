@@ -269,7 +269,7 @@ func getUserByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	obj, exists := store.userStore.Get(userID)
+	obj, exists := store.Get(userID)
 	if !exists {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
@@ -287,7 +287,7 @@ func getUserByID(w http.ResponseWriter, r *http.Request) {
 func allUsers(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(store.userStore.getAllUsers())
+	json.NewEncoder(w).Encode(store.getAllUsers())
 }
 
 func deleteUserByID(w http.ResponseWriter, r *http.Request) {
