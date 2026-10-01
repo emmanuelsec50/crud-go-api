@@ -27,10 +27,16 @@ type userRepository struct {
 }
 type UserRepository interface {
 	Create(user User, id int)
+	Get(id int) (User, bool)
 }
 
 func (r *userRepository) Create(user User, id int) {
 	r.mapStore[id] = user
+}
+
+func (r *userRepository) Get(id int) (User, bool) {
+	user, exists := r.mapStore[id]
+	return user, exists
 }
 
 func (u *userService) Create(user User) int {
@@ -38,6 +44,14 @@ func (u *userService) Create(user User) int {
 	u.userStore.Create(user, id)
 	u.nextID++
 	return id
+}
+
+func (u *userService) Get(id int) (User, bool) {
+	user, exists := u.userStore.Get(id)
+	if !exists {
+		return User{}, exists
+	}
+	return user, exists
 }
 
 var store = userService{
@@ -220,7 +234,7 @@ func getUserByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	obj, exists := userStore[userID]
+	obj, exists := store.userStore.Get(userID)
 	if !exists {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
