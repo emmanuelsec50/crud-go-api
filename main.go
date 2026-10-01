@@ -18,19 +18,27 @@ type User struct {
 }
 
 type userService struct {
-	userStore map[int]User
+	userStore userRepository
 	nextID    int
+}
+
+type userRepository struct {
+	mapStore map[int]User
+}
+
+func (r *userRepository) Create(user User, id int) {
+	r.mapStore[id] = user
 }
 
 func (u *userService) Create(user User) int {
 	id := u.nextID
-	u.userStore[u.nextID] = user
+	u.userStore.Create(user, id)
 	u.nextID++
 	return id
 }
 
 var store = userService{
-	userStore: map[int]User{1: {Name: "Emmanuel", Age: "65"}},
+	userStore: userRepository{map[int]User{1: {Name: "Emmanuel", Age: "65"}}},
 	nextID:    2,
 }
 
@@ -171,8 +179,8 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 
 	newID := store.Create(user)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[int]User{newID: {store.userStore[newID].Name, store.userStore[newID].Age}})
 	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[int]User{newID: {store.userStore.mapStore[newID].Name, store.userStore.mapStore[newID].Age}})
 
 }
 
