@@ -18,12 +18,15 @@ type User struct {
 }
 
 type userService struct {
-	userStore userRepository
+	userStore UserRepository
 	nextID    int
 }
 
 type userRepository struct {
 	mapStore map[int]User
+}
+type UserRepository interface {
+	Create(user User, id int)
 }
 
 func (r *userRepository) Create(user User, id int) {
@@ -38,7 +41,7 @@ func (u *userService) Create(user User) int {
 }
 
 var store = userService{
-	userStore: userRepository{map[int]User{1: {Name: "Emmanuel", Age: "65"}}},
+	userStore: &userRepository{map[int]User{1: {Name: "Emmanuel", Age: "65"}}},
 	nextID:    2,
 }
 
