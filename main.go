@@ -285,8 +285,9 @@ func getUserByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func allUsers(w http.ResponseWriter, r *http.Request) {
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(userStore)
+	json.NewEncoder(w).Encode(store.userStore.getAllUsers())
 }
 
 func deleteUserByID(w http.ResponseWriter, r *http.Request) {
