@@ -25,12 +25,50 @@ type userService struct {
 type userRepository struct {
 	mapStore map[int]User
 }
+
+type backupRepository struct {
+	user map[int]User
+}
+
 type UserRepository interface {
 	Create(user User, id int)
 	Get(id int) (User, bool)
 	GetUserByName(name string) map[int]User
-	deleteUserByID(id int) bool
-	getAllUsers() []map[int]User
+	DeleteUserByID(id int) bool
+	GetAllUsers() []map[int]User
+}
+
+func (r *backupRepository) Create(user User, id int) {
+	r.user[id] = user
+}
+func (r *backupRepository) Get(id int) (User, bool) {
+	user, exists := r.user[id]
+	return user, exists
+}
+func (r *backupRepository) GetUserByName(name string) map[int]User {
+	for index, item := range r.user {
+		if name == item.Name {
+			body := map[int]User{index: {item.Name, item.Age}}
+			return body
+		}
+	}
+	return map[int]User{}
+}
+func (r *backupRepository) DeleteUserByID(id int) bool {
+	_, exists := r.Get(id)
+	if exists {
+		delete(r.user, id)
+	}
+	return exists
+
+}
+func (r *backupRepository) GetAllUsers() []map[int]User {
+	var allUsers []map[int]User
+	for i, item := range r.user {
+		allUsers = append(allUsers, map[int]User{i: {item.Name, item.Age}})
+	}
+
+	return allUsers
 }
 
 func (r *userRepository) Create(user User, id int) {
@@ -51,7 +89,7 @@ func (r *userRepository) GetUserByName(name string) map[int]User {
 	return map[int]User{}
 }
 
-func (r *userRepository) deleteUserByID(id int) bool {
+func (r *userRepository) DeleteUserByID(id int) bool {
 	_, exists := r.Get(id)
 	if exists {
 		delete(r.mapStore, id)
@@ -60,7 +98,7 @@ func (r *userRepository) deleteUserByID(id int) bool {
 
 }
 
-func (r *userRepository) getAllUsers() []map[int]User {
+func (r *userRepository) GetAllUsers() []map[int]User {
 	var allUsers []map[int]User
 	for i, item := range r.mapStore {
 		allUsers = append(allUsers, map[int]User{i: {item.Name, item.Age}})
@@ -89,17 +127,20 @@ func (u *userService) getUserByName(name string) map[int]User {
 }
 
 func (u *userService) deleteUserByID(id int) bool {
-	exists := u.userStore.deleteUserByID(id)
+	exists := u.userStore.DeleteUserByID(id)
 	return exists
 }
 
 func (u *userService) getAllUsers() []map[int]User {
-	return u.userStore.getAllUsers()
+	return u.userStore.GetAllUsers()
 }
 
 var store = userService{
 	userStore: &userRepository{map[int]User{1: {Name: "Emmanuel", Age: "65"}}},
 	nextID:    2,
+}
+var backupStore = userService{
+	userStore: &backupRepository{make(map[int]User)},
 }
 
 type responseWriter struct {
