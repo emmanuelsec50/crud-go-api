@@ -8,14 +8,16 @@ import (
 	"strconv"
 	"time"
 
+	"chi_practise/internal/user"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-type User struct {
-	Name string `json:"name"`
-	Age  string `json:"age"`
-}
+// type User struct {
+// 	Name string `json:"name"`
+// 	Age  string `json:"age"`
+// }
 
 type userService struct {
 	userStore UserRepository
@@ -23,38 +25,38 @@ type userService struct {
 }
 
 type userRepository struct {
-	mapStore map[int]User
+	mapStore map[int]user.User
 }
 
 type backupRepository struct {
-	user map[int]User
+	user map[int]user.User
 }
 type userHandler struct {
 	service *userService
 }
 type UserRepository interface {
-	Create(user User, id int)
-	Get(id int) (User, bool)
-	GetUserByName(name string) map[int]User
+	Create(user user.User, id int)
+	Get(id int) (user.User, bool)
+	GetUserByName(name string) map[int]user.User
 	DeleteUserByID(id int) bool
-	GetAllUsers() []map[int]User
+	GetAllUsers() []map[int]user.User
 }
 
-func (r *backupRepository) Create(user User, id int) {
+func (r *backupRepository) Create(user user.User, id int) {
 	r.user[id] = user
 }
-func (r *backupRepository) Get(id int) (User, bool) {
+func (r *backupRepository) Get(id int) (user.User, bool) {
 	user, exists := r.user[id]
 	return user, exists
 }
-func (r *backupRepository) GetUserByName(name string) map[int]User {
+func (r *backupRepository) GetUserByName(name string) map[int]user.User {
 	for index, item := range r.user {
 		if name == item.Name {
-			body := map[int]User{index: {item.Name, item.Age}}
+			body := map[int]user.User{index: {Name: item.Name, Age: item.Age}}
 			return body
 		}
 	}
-	return map[int]User{}
+	return map[int]user.User{}
 }
 func (r *backupRepository) DeleteUserByID(id int) bool {
 	_, exists := r.Get(id)
@@ -64,31 +66,31 @@ func (r *backupRepository) DeleteUserByID(id int) bool {
 	return exists
 
 }
-func (r *backupRepository) GetAllUsers() []map[int]User {
-	var allUsers []map[int]User
+func (r *backupRepository) GetAllUsers() []map[int]user.User {
+	var allUsers []map[int]user.User
 	for i, item := range r.user {
-		allUsers = append(allUsers, map[int]User{i: {item.Name, item.Age}})
+		allUsers = append(allUsers, map[int]user.User{i: {Name: item.Name, Age: item.Age}})
 	}
 
 	return allUsers
 }
 
-func (r *userRepository) Create(user User, id int) {
+func (r *userRepository) Create(user user.User, id int) {
 	r.mapStore[id] = user
 }
 
-func (r *userRepository) Get(id int) (User, bool) {
+func (r *userRepository) Get(id int) (user.User, bool) {
 	user, exists := r.mapStore[id]
 	return user, exists
 }
-func (r *userRepository) GetUserByName(name string) map[int]User {
+func (r *userRepository) GetUserByName(name string) map[int]user.User {
 	for index, item := range r.mapStore {
 		if name == item.Name {
-			body := map[int]User{index: {item.Name, item.Age}}
+			body := map[int]user.User{index: {Name: item.Name, Age: item.Age}}
 			return body
 		}
 	}
-	return map[int]User{}
+	return map[int]user.User{}
 }
 
 func (r *userRepository) DeleteUserByID(id int) bool {
@@ -100,30 +102,30 @@ func (r *userRepository) DeleteUserByID(id int) bool {
 
 }
 
-func (r *userRepository) GetAllUsers() []map[int]User {
-	var allUsers []map[int]User
+func (r *userRepository) GetAllUsers() []map[int]user.User {
+	var allUsers []map[int]user.User
 	for i, item := range r.mapStore {
-		allUsers = append(allUsers, map[int]User{i: {item.Name, item.Age}})
+		allUsers = append(allUsers, map[int]user.User{i: {Name: item.Name, Age: item.Age}})
 	}
 
 	return allUsers
 }
 
-func (u *userService) Create(user User) int {
+func (u *userService) Create(user user.User) int {
 	id := u.nextID
 	u.userStore.Create(user, id)
 	u.nextID++
 	return id
 }
 
-func (u *userService) Get(id int) (User, bool) {
-	user, exists := u.userStore.Get(id)
+func (u *userService) Get(id int) (user.User, bool) {
+	obj, exists := u.userStore.Get(id)
 	if !exists {
-		return User{}, exists
+		return user.User{}, exists // line 24
 	}
-	return user, exists
+	return obj, exists
 }
-func (u *userService) getUserByName(name string) map[int]User {
+func (u *userService) getUserByName(name string) map[int]user.User {
 	user := u.userStore.GetUserByName(name)
 	return user
 }
@@ -133,7 +135,7 @@ func (u *userService) deleteUserByID(id int) bool {
 	return exists
 }
 
-func (u *userService) getAllUsers() []map[int]User {
+func (u *userService) getAllUsers() []map[int]user.User {
 	return u.userStore.GetAllUsers()
 }
 
@@ -150,7 +152,7 @@ func NewHandler(service *userService) *userHandler {
 }
 
 var repo = &userRepository{
-	mapStore: make(map[int]User),
+	mapStore: make(map[int]user.User),
 }
 var service = NewService(repo)
 var handler = NewHandler(service)
@@ -295,17 +297,17 @@ func (h *userHandler) createUser(w http.ResponseWriter, r *http.Request) {
 	}
 	id := middleware.GetReqID(r.Context())
 	fmt.Printf("Request ID is: %s\n", id)
-	var user User
-	err := json.NewDecoder(r.Body).Decode(&user)
+	var obj user.User
+	err := json.NewDecoder(r.Body).Decode(&obj)
 	if err != nil {
 		http.Error(w, "Error in decoding", http.StatusBadRequest)
 		return
 	}
 
-	newID := h.service.Create(user)
+	newID := h.service.Create(obj)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[int]User{newID: {user.Name, user.Age}})
+	json.NewEncoder(w).Encode(map[int]user.User{newID: {Name: obj.Name, Age: obj.Age}}) // line 310
 
 }
 
@@ -340,7 +342,7 @@ func (h *userHandler) getUserByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body := User{
+	body := user.User{
 		Name: obj.Name,
 		Age:  obj.Age,
 	}
