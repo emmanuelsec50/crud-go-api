@@ -152,8 +152,8 @@ func NewHandler(service *userService) *userHandler {
 var repo = &userRepository{
 	mapStore: make(map[int]User),
 }
-var store = NewService(repo)
-var handler = NewHandler(store)
+var service = NewService(repo)
+var handler = NewHandler(service)
 
 // var store = userService{
 // 	userStore: &userRepository{map[int]User{1: {Name: "Emmanuel", Age: "65"}}},
@@ -302,7 +302,7 @@ func (h *userHandler) createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newID := store.Create(user)
+	newID := h.service.Create(user)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[int]User{newID: {user.Name, user.Age}})
@@ -315,7 +315,7 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 
 func (h *userHandler) getUserByName(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
-	body := store.getUserByName(name)
+	body := h.service.getUserByName(name)
 	if body != nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(body)
@@ -334,7 +334,7 @@ func (h *userHandler) getUserByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	obj, exists := store.Get(userID)
+	obj, exists := h.service.Get(userID)
 	if !exists {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
@@ -352,7 +352,7 @@ func (h *userHandler) getUserByID(w http.ResponseWriter, r *http.Request) {
 func (h *userHandler) allUsers(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(store.getAllUsers())
+	json.NewEncoder(w).Encode(h.service.getAllUsers())
 }
 
 func (h *userHandler) deleteUserByID(w http.ResponseWriter, r *http.Request) {
@@ -371,7 +371,7 @@ func (h *userHandler) deleteUserByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exists := store.deleteUserByID(userID)
+	exists := h.service.deleteUserByID(userID)
 	if !exists {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
