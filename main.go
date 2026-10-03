@@ -20,95 +20,12 @@ import (
 // }
 
 type userService struct {
-	userStore UserRepository
+	userStore user.UserRepository
 	nextID    int
 }
 
-type userRepository struct {
-	mapStore map[int]user.User
-}
-
-type backupRepository struct {
-	user map[int]user.User
-}
 type userHandler struct {
 	service *userService
-}
-type UserRepository interface {
-	Create(user user.User, id int)
-	Get(id int) (user.User, bool)
-	GetUserByName(name string) map[int]user.User
-	DeleteUserByID(id int) bool
-	GetAllUsers() []map[int]user.User
-}
-
-func (r *backupRepository) Create(user user.User, id int) {
-	r.user[id] = user
-}
-func (r *backupRepository) Get(id int) (user.User, bool) {
-	user, exists := r.user[id]
-	return user, exists
-}
-func (r *backupRepository) GetUserByName(name string) map[int]user.User {
-	for index, item := range r.user {
-		if name == item.Name {
-			body := map[int]user.User{index: {Name: item.Name, Age: item.Age}}
-			return body
-		}
-	}
-	return map[int]user.User{}
-}
-func (r *backupRepository) DeleteUserByID(id int) bool {
-	_, exists := r.Get(id)
-	if exists {
-		delete(r.user, id)
-	}
-	return exists
-
-}
-func (r *backupRepository) GetAllUsers() []map[int]user.User {
-	var allUsers []map[int]user.User
-	for i, item := range r.user {
-		allUsers = append(allUsers, map[int]user.User{i: {Name: item.Name, Age: item.Age}})
-	}
-
-	return allUsers
-}
-
-func (r *userRepository) Create(user user.User, id int) {
-	r.mapStore[id] = user
-}
-
-func (r *userRepository) Get(id int) (user.User, bool) {
-	user, exists := r.mapStore[id]
-	return user, exists
-}
-func (r *userRepository) GetUserByName(name string) map[int]user.User {
-	for index, item := range r.mapStore {
-		if name == item.Name {
-			body := map[int]user.User{index: {Name: item.Name, Age: item.Age}}
-			return body
-		}
-	}
-	return map[int]user.User{}
-}
-
-func (r *userRepository) DeleteUserByID(id int) bool {
-	_, exists := r.Get(id)
-	if exists {
-		delete(r.mapStore, id)
-	}
-	return exists
-
-}
-
-func (r *userRepository) GetAllUsers() []map[int]user.User {
-	var allUsers []map[int]user.User
-	for i, item := range r.mapStore {
-		allUsers = append(allUsers, map[int]user.User{i: {Name: item.Name, Age: item.Age}})
-	}
-
-	return allUsers
 }
 
 func (u *userService) Create(user user.User) int {
@@ -139,7 +56,7 @@ func (u *userService) getAllUsers() []map[int]user.User {
 	return u.userStore.GetAllUsers()
 }
 
-func NewService(repo UserRepository) *userService {
+func NewService(repo user.UserRepository) *userService {
 	return &userService{
 		userStore: repo,
 		nextID:    1,
@@ -151,9 +68,7 @@ func NewHandler(service *userService) *userHandler {
 	}
 }
 
-var repo = &userRepository{
-	mapStore: make(map[int]user.User),
-}
+var repo = user.NewRepository()
 var service = NewService(repo)
 var handler = NewHandler(service)
 
