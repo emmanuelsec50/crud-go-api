@@ -29,7 +29,9 @@ type userRepository struct {
 type backupRepository struct {
 	user map[int]User
 }
-
+type userHandler struct {
+	service *userService
+}
 type UserRepository interface {
 	Create(user User, id int)
 	Get(id int) (User, bool)
@@ -135,13 +137,32 @@ func (u *userService) getAllUsers() []map[int]User {
 	return u.userStore.GetAllUsers()
 }
 
-var store = userService{
-	userStore: &userRepository{map[int]User{1: {Name: "Emmanuel", Age: "65"}}},
-	nextID:    2,
+func NewService(repo UserRepository) *userService {
+	return &userService{
+		userStore: repo,
+		nextID:    1,
+	}
 }
-var backupStore = userService{
-	userStore: &backupRepository{make(map[int]User)},
+func NewHandler(service *userService) *userHandler {
+	return &userHandler{
+		service: service,
+	}
 }
+
+var repo = &userRepository{
+	mapStore: make(map[int]User),
+}
+var store = NewService(repo)
+var handler = NewHandler(store)
+
+// var store = userService{
+// 	userStore: &userRepository{map[int]User{1: {Name: "Emmanuel", Age: "65"}}},
+// 	nextID:    2,
+// }
+// var backupStore = userService{
+// 	userStore: &backupRepository{make(map[int]User)},
+// 	nextID:    0,
+// }
 
 type responseWriter struct {
 	http.ResponseWriter
@@ -205,7 +226,10 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(requireAPI)
 		r.Use(middleware.Timeout(5 * time.Second))
-		r.Route("/users", userRoutes)
+		// r.Route("/users", userRoutes)
+		r.Route("/users", func(r chi.Router) {
+			userRoutes(r, handler)
+		})
 
 	})
 
@@ -216,12 +240,12 @@ func main() {
 	}
 }
 
-func userRoutes(r chi.Router) {
-	r.Get("/", allUsers)
-	r.Get("/search", getUserByName)
-	r.Get("/{id}", getUserByID)
-	r.With(adminOnly).Delete("/{id}", deleteUserByID)
-	r.Post("/", createUser)
+func userRoutes(r chi.Router, h *userHandler) {
+	r.Get("/", h.allUsers)
+	r.Get("/search", h.getUserByName)
+	r.Get("/{id}", h.getUserByID)
+	r.With(adminOnly).Delete("/{id}", h.deleteUserByID)
+	r.Post("/", h.createUser)
 
 }
 
@@ -251,7 +275,7 @@ func adminOnly(next http.Handler) http.Handler {
 	})
 }
 
-func createUser(w http.ResponseWriter, r *http.Request) {
+func (h *userHandler) createUser(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan bool)
 	go func() {
 		select {
@@ -289,7 +313,7 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello world"))
 }
 
-func getUserByName(w http.ResponseWriter, r *http.Request) {
+func (h *userHandler) getUserByName(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	body := store.getUserByName(name)
 	if body != nil {
@@ -301,7 +325,7 @@ func getUserByName(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func getUserByID(w http.ResponseWriter, r *http.Request) {
+func (h *userHandler) getUserByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	userID, err := strconv.Atoi(id)
@@ -325,13 +349,13 @@ func getUserByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(body)
 }
 
-func allUsers(w http.ResponseWriter, r *http.Request) {
+func (h *userHandler) allUsers(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(store.getAllUsers())
 }
 
-func deleteUserByID(w http.ResponseWriter, r *http.Request) {
+func (h *userHandler) deleteUserByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	role, ok := r.Context().Value(userRole).(Authuser)
 	if !ok {
