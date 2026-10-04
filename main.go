@@ -14,72 +14,19 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-// type User struct {
-// 	Name string `json:"name"`
-// 	Age  string `json:"age"`
-// }
-
-type userService struct {
-	userStore user.UserRepository
-	nextID    int
-}
-
 type userHandler struct {
-	service *userService
+	service *user.UserService
 }
 
-func (u *userService) Create(user user.User) int {
-	id := u.nextID
-	u.userStore.Create(user, id)
-	u.nextID++
-	return id
-}
-
-func (u *userService) Get(id int) (user.User, bool) {
-	obj, exists := u.userStore.Get(id)
-	if !exists {
-		return user.User{}, exists // line 24
-	}
-	return obj, exists
-}
-func (u *userService) getUserByName(name string) map[int]user.User {
-	user := u.userStore.GetUserByName(name)
-	return user
-}
-
-func (u *userService) deleteUserByID(id int) bool {
-	exists := u.userStore.DeleteUserByID(id)
-	return exists
-}
-
-func (u *userService) getAllUsers() []map[int]user.User {
-	return u.userStore.GetAllUsers()
-}
-
-func NewService(repo user.UserRepository) *userService {
-	return &userService{
-		userStore: repo,
-		nextID:    1,
-	}
-}
-func NewHandler(service *userService) *userHandler {
+func NewHandler(service *user.UserService) *userHandler {
 	return &userHandler{
 		service: service,
 	}
 }
 
 var repo = user.NewRepository()
-var service = NewService(repo)
+var service = user.NewService(repo)
 var handler = NewHandler(service)
-
-// var store = userService{
-// 	userStore: &userRepository{map[int]User{1: {Name: "Emmanuel", Age: "65"}}},
-// 	nextID:    2,
-// }
-// var backupStore = userService{
-// 	userStore: &backupRepository{make(map[int]User)},
-// 	nextID:    0,
-// }
 
 type responseWriter struct {
 	http.ResponseWriter
@@ -91,14 +38,6 @@ func (rw *responseWriter) writeHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-// var (
-//
-//	userStore = map[int]User{
-//		1: {Name: "Emmanuel", Age: "20"},
-//	}
-//	nextID = 2
-//
-// )
 var secretKey = "secret-key-123"
 
 func requireAPI(next http.Handler) http.Handler {
@@ -232,7 +171,7 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 
 func (h *userHandler) getUserByName(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
-	body := h.service.getUserByName(name)
+	body := h.service.GetUserByName(name)
 	if body != nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(body)
@@ -269,7 +208,7 @@ func (h *userHandler) getUserByID(w http.ResponseWriter, r *http.Request) {
 func (h *userHandler) allUsers(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.service.getAllUsers())
+	json.NewEncoder(w).Encode(h.service.GetAllUsers())
 }
 
 func (h *userHandler) deleteUserByID(w http.ResponseWriter, r *http.Request) {
@@ -288,7 +227,7 @@ func (h *userHandler) deleteUserByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exists := h.service.deleteUserByID(userID)
+	exists := h.service.DeleteUserByID(userID)
 	if !exists {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
