@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"chi_practise/internal/user"
@@ -14,19 +12,9 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-type userHandler struct {
-	service *user.UserService
-}
-
-func NewHandler(service *user.UserService) *userHandler {
-	return &userHandler{
-		service: service,
-	}
-}
-
 var repo = user.NewRepository()
 var service = user.NewService(repo)
-var handler = NewHandler(service)
+var handler = user.NewHandler(service)
 
 type responseWriter struct {
 	http.ResponseWriter
@@ -96,12 +84,12 @@ func main() {
 	}
 }
 
-func userRoutes(r chi.Router, h *userHandler) {
-	r.Get("/", h.allUsers)
-	r.Get("/search", h.getUserByName)
-	r.Get("/{id}", h.getUserByID)
-	r.With(adminOnly).Delete("/{id}", h.deleteUserByID)
-	r.Post("/", h.createUser)
+func userRoutes(r chi.Router, h *user.UserHandler) {
+	r.Get("/", h.AllUsers)
+	r.Get("/search", h.GetUserByName)
+	r.Get("/{id}", h.GetUserByID)
+	r.With(adminOnly).Delete("/{id}", h.DeleteUserByID)
+	r.Post("/", h.CreateUser)
 
 }
 
@@ -131,107 +119,6 @@ func adminOnly(next http.Handler) http.Handler {
 	})
 }
 
-func (h *userHandler) createUser(w http.ResponseWriter, r *http.Request) {
-	ch := make(chan bool)
-	go func() {
-		select {
-		case <-time.After(2 * time.Second):
-			ch <- true
-		case <-r.Context().Done():
-			return
-
-		}
-	}()
-	select {
-	case <-ch:
-		fmt.Println("Finished processing")
-	case <-r.Context().Done():
-		fmt.Println("Request timed out")
-		return
-	}
-	id := middleware.GetReqID(r.Context())
-	fmt.Printf("Request ID is: %s\n", id)
-	var obj user.User
-	err := json.NewDecoder(r.Body).Decode(&obj)
-	if err != nil {
-		http.Error(w, "Error in decoding", http.StatusBadRequest)
-		return
-	}
-
-	newID := h.service.Create(obj)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[int]user.User{newID: {Name: obj.Name, Age: obj.Age}}) // line 310
-
-}
-
 func helloWorld(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello world"))
-}
-
-func (h *userHandler) getUserByName(w http.ResponseWriter, r *http.Request) {
-	name := r.URL.Query().Get("name")
-	body := h.service.GetUserByName(name)
-	if body != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(body)
-		return
-	}
-	http.Error(w, "Invalid username", http.StatusNotFound)
-
-}
-
-func (h *userHandler) getUserByID(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-
-	userID, err := strconv.Atoi(id)
-	if err != nil {
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
-		return
-	}
-
-	obj, exists := h.service.Get(userID)
-	if !exists {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-
-	body := user.User{
-		Name: obj.Name,
-		Age:  obj.Age,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(body)
-}
-
-func (h *userHandler) allUsers(w http.ResponseWriter, r *http.Request) {
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.service.GetAllUsers())
-}
-
-func (h *userHandler) deleteUserByID(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	role, ok := r.Context().Value(userRole).(Authuser)
-	if !ok {
-		fmt.Println("Role not found")
-		return
-	}
-	fmt.Printf("Authenticated user: %d\n", role.ID)
-	fmt.Printf("Role: %s\n", role.Role)
-
-	userID, err := strconv.Atoi(id)
-	if err != nil {
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
-		return
-	}
-
-	exists := h.service.DeleteUserByID(userID)
-	if !exists {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
 }

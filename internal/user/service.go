@@ -1,5 +1,9 @@
 package user
 
+import "errors"
+
+var ErrUserNotFound = errors.New("User not found")
+
 type UserService struct {
 	repo   UserRepository
 	nextID int
@@ -12,12 +16,12 @@ func (u *UserService) Create(user User) int {
 	return id
 }
 
-func (u *UserService) Get(id int) (User, bool) {
+func (u *UserService) Get(id int) (User, error) {
 	obj, exists := u.repo.Get(id)
 	if !exists {
-		return User{}, exists // line 24
+		return User{}, ErrUserNotFound
 	}
-	return obj, exists
+	return obj, nil
 }
 func (u *UserService) GetUserByName(name string) map[int]User {
 	user := u.repo.GetUserByName(name)
